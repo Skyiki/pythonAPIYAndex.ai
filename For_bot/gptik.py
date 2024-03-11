@@ -186,10 +186,13 @@ def answer_function(call):
             #удаление ненужного
             sql.delete(user_id)
 
+            task[user_id] = ''
+
             #возвращение к началу
             bot.register_next_step_handler(call, subject)
         else:
-            sql.update_data(user_id, 'answer', f'{results}')
+            task[user_id] += f'{results}'
+            sql.update_data(user_id, 'task', f'{task[user_id]}')
             return
     except:
 
