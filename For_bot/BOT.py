@@ -1,21 +1,36 @@
 import logging
-from for_SQL import SQL
+from database import(
+    create_db,
+    create_table,
+    insert_data,
+    add_record_to_table,
+    execute_selection_query
+)
 import requests
 import telebot
+from datetime import datetime
 from telebot import types
 import config
 import nou
 from transformers import AutoTokenizer
 import GPT
+import sqlite3
 
-bot = telebot.TeleBot(token=config.token)
-answer = ''
+
 user = {}
+session = {}
 max_tokens_in_task = 2048
 system_content = {}
 task = {}
-sql = SQL()
 assistant_content = 'Ответь на вопрос:'
+role = 'Ты сценарист и должен написать красивую историю. Пиши на русском языке'
+
+max_session = 3
+try:
+    bot = telebot.TeleBot(token=config.token)
+except:
+    token = input(str('Напиши токен бота'))
+    bot = telebot.TeleBot(token=token)
 
 def count_tokens(text):
     tokenizer = AutoTokenizer.from_pretrained("rhysjones/phi-2-orange")  # название модели
@@ -35,8 +50,8 @@ def help_function(message):
 @bot.message_handler(commands=['start'])
 def start_function(message):
     #создание таблицы и бд с помощью функций
-    sql.create_db()
-    sql.create_table()
+    create_db()
+    create_table('users')
 
     #имя пользователя сохраняется в переменных
     user_name = message.from_user.first_name
@@ -44,10 +59,13 @@ def start_function(message):
     keyboard = types.InlineKeyboardMarkup()
     but1 = types.InlineKeyboardButton(text='Начать!', callback_data='button_1')
     keyboard.add(but1)
-    bot.send_message(message.chat.id, text=f"Приветствую тебя, {user_name}!", reply_markup=keyboard)
+    bot.send_message(message.chat.id, text=f"Приветствую тебя, {user_name}! Я бот, создающий истории с помощью нейросети"
+                                           f"Мы будем писать историю поочерёдно. Я начну, а ты должен продолжить \n"
+                                           f"Нажми кнопку, чтобы начать,а когда захочешь выйти напиши /end",
+                     reply_markup=keyboard)
 
     user_id = message.from_user.id
-    sql.insert_data(user_id=user_id)
+    insert_data(user_id=user_id)
 
     #переход к следующей функции
     bot.register_next_step_handler_by_chat_id(message, subject)
@@ -74,25 +92,14 @@ def level(message):
     user_id = message.from_user.id
     text = message.text
 
-    if text == 'Детектив':
-        sql.update_data(user_id, 'genre', 'Детектив')
-    elif text == 'Фэнтези':
-        sql.update_data(user_id, 'genre', 'Фэнтези')
-    elif text == 'Драма':
-        sql.update_data(user_id, 'genre', 'Драма')
-    else:
-        bot.send_message(user_id, text='Данные введены некорректно. Нажмите на кнопку клавиатуры.')
-        bot.register_next_step_handler_by_chat_id(message, subject)
-
     global task
-    task[user_id] = (f" Давай подробный ответ с решением на русском языке"
-                          f"генерируй сценарий по жанру: {text}")
+    task[user_id] = (f"Генерируй сценарий по жанру: {text}")
 
     keyboard = types.ReplyKeyboardMarkup()
-    button_1 = types.KeyboardButton(text='Мелисса♀️')
+    button_1 = types.KeyboardButton(text='Гермиона♀️')
     button_2 = types.KeyboardButton(text='Исидор♂️')
-    button_3 = types.KeyboardButton(text='Мария♀️')
-    button_4 = types.KeyboardButton(text='Эйзак♂️')
+    button_3 = types.KeyboardButton(text='Дори♀️')
+    button_4 = types.KeyboardButton(text='Гендальф♂️')
     keyboard.add(button_1, button_2)
     keyboard.add(button_3, button_4)
 
@@ -105,27 +112,15 @@ def level(message):
 def solve_task(message):
     user_id = message.from_user.id
 
-    if message.text == 'Мелисса♀️':
-        sql.update_data(user_id, 'character', 'Мелисса')
-    elif message.text == 'Исидор♂️':
-        sql.update_data(user_id, 'character', 'Исидор')
-    elif message.text == 'Мария♀️️':
-        sql.update_data(user_id, 'character', 'Мария')
-    elif message.text == 'Эйзак♂️':
-        sql.update_data(user_id, 'character', 'Эйзак')
-    else:
-        bot.send_message(user_id, text='Данные введены некорректно. Нажмите на кнопку клавиатуры.')
-        bot.register_next_step_handler_by_chat_id(message, level)
-
     text = message.text
     global task
     task[user_id] += f"Главным героем, генерируемого сценария является: {text}"
 
     #создание клавиатуры
     keyboard = types.ReplyKeyboardMarkup()
-    button_1 = types.KeyboardButton(text='Гарри Поттер')
-    button_2 = types.KeyboardButton(text='Звёздные войны')
-    button_3 = types.KeyboardButton(text='Marvel')
+    button_1 = types.KeyboardButton(text='Путешествие')
+    button_2 = types.KeyboardButton(text='Битва')
+    button_3 = types.KeyboardButton(text='Магия')
     keyboard.add(button_1)
     keyboard.add(button_2, button_3)
 
@@ -137,43 +132,69 @@ def solve_task(message):
 def finals(message):
     user_id = message.from_user.id
 
-    if message.text == 'Гарри Поттер':
-        sql.update_data(user_id, 'universal', 'Гарри Поттер')
-    elif message.text == 'Звёздные войны':
-        sql.update_data(user_id, 'universal', 'Звёздные войны')
-    elif message.text == 'Marvel️':
-        sql.update_data(user_id, 'universal', 'Marvel')
-    else:
-        bot.send_message(user_id, text='Данные введены некорректно. Нажмите на кнопку клавиатуры.')
-        bot.register_next_step_handler_by_chat_id(message, level)
-
     text = message.text
     global task
-    task[user_id] += f"Главным героем, генерируемого сценария является: {text}"
-
-    sql.update_data(user_id, 'task', f'{task[user_id]}')
-    sql.update_data(user_id, 'answer', '')
+    task[user_id] += f"Всё это происходит с сеттингом: {text}"
 
     keyboard = types.ReplyKeyboardMarkup()
     button_1 = types.KeyboardButton(text='Начать!')
     keyboard.add(button_1)
 
-    bot.send_message(user_id, text="Нажми 'Начать' для генерации сценария!", reply_markup=keyboard)
+    bot.send_message(user_id, text="Если ты хочешь ещё что-то добавить к истории, то напиши сейчас."
+                                   "Или ты можешь нажать /begin для начала генерации", reply_markup=keyboard)
 
-    bot.register_next_step_handler(message, answer_function)
+    session[user_id] += 1
+    nou.max_session(user_id, user_id, session, bot)
 
+    bot.register_next_step_handler(message, addition_function)
 
+@bot.message_handler()
+def addition_function(message):
+    user_id = message.from_user.id
+    text = message.text
+    task[user_id] += text
+
+    bot.send_message(user_id, text='Спасибо! Мы учтём это при генерации текста. А теперь нажми /begin и я начну писать')
 
 #Команда, присылающая ответ от нейросети
-@bot.message_handler(commands=['answer'])
+@bot.message_handler(commands=['begin'])
 def answer_function(call):
     user_id = call.message_id
-    result = sql.select_info(user_id)
-    user_promt = result['task']
-    answer = result['answer']
+    user_answer = task[user_id]
 
+    tokens: int = GPT.count_tokens(user_answer)
+
+    if GPT.is_tokens_limit(user_id, user_id, tokens, bot):
+        return
+
+    row: sqlite3.Row = session[user_id]
+
+    add_record_to_table(
+        user_id,
+        'user',
+        user_answer,
+        datetime.now(),
+        tokens,
+        row['session_id']
+    )
+
+    bot.send_message(user_id, 'Генерирую ответ...')
     try:
-        results = GPT.ask_gpt(text=user_promt)
+        results = GPT.ask_gpt(text=user_answer, role=role)
+
+        tokens: int = count_tokens(results)
+
+        if GPT.is_tokens_limit(user_id, user_id, tokens, bot):
+            return
+
+        add_record_to_table(
+            user_id,
+            'assistant',
+            results,
+            datetime.now(),
+            tokens,
+            row['session_id']
+        )
 
         #создание клавиатуры
         keyboard = types.InlineKeyboardMarkup()
@@ -184,15 +205,13 @@ def answer_function(call):
 
         if call.data != 'button2':
             #удаление ненужного
-            sql.delete(user_id)
-
             task[user_id] = ''
 
             #возвращение к началу
             bot.register_next_step_handler(call, subject)
         else:
             task[user_id] += f'{results}'
-            sql.update_data(user_id, 'task', f'{task[user_id]}')
+
             return
     except:
 

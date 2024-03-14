@@ -3,11 +3,12 @@ import telebot
 from telebot import types
 import requests
 import logging
-import gptik
+import BOT
 import json
-from for_SQL import SQL
+from database import SQL
 
 sql = SQL()
+max_session = 3
 
 # Настройка логирования
 logging.basicConfig(
@@ -76,3 +77,9 @@ def sticker_func(message):
     bot.reply_to(message.chat.id, text="Этот контент не поддерживается ботом. \n"
                                "Нажмите /start для перезапуска"
                  )
+
+
+def max_session(user_id, chat_id, session, bot):
+    if session >= max_session:
+        bot.send_message(chat_id, text='У тебя закончились сессии. Больше ты не сможешь воспользоваться ботом(')
+
