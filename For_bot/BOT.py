@@ -181,6 +181,7 @@ def answer_function(call):
 
     row: sqlite3.Row = session[user_id]
 
+    # создание новой строчки в таблице с user
     add_record_to_table(
         user_id,
         'user',
@@ -200,6 +201,7 @@ def answer_function(call):
         if GPT.is_tokens_limit(user_id, user_id, tokens, bot):
             return
 
+        #создание новой строчки в таблице с assistant
         add_record_to_table(
             user_id,
             'assistant',

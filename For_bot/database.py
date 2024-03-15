@@ -113,6 +113,7 @@ def delete(self, user_id):
 def delete_table(self, table_name):
     execute_query(f'DELETE FROM {table_name}')
 
+
  #функция для вставки новой строки в таблицу
 def insert_row(table_name, values, columns=''):
     if columns != '':
@@ -120,18 +121,19 @@ def insert_row(table_name, values, columns=''):
     sql_query = f'INSERT INTO {table_name} {columns}VALUES ({", ".join(["?"] * len(values))})'
     execute_query(sql_query, values)
 
+
 #добавление новой записи в таблицу
 def add_record_to_table(user_id, role, content, date, tokens, session_id):
     insert_row(DB_TABLE_USERS_NAME,
                [user_id, role, content, date, tokens, session_id],
                columns=['user_id', 'role', 'content', 'date', 'tokens', 'session_id'])
 
+#проверка количества пользователей в таблице
 def is_limit_users():
     connection = sqlite3.connect('sqlite3.db')
 
     cursor = connection.cursor()
     result = cursor.execute('SELECT DISTINCT user_id FROM table_name;')
-
 
     count = 0  # количество пользователей
     for i in result:  # считаем количество полученных строк
