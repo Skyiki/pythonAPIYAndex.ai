@@ -77,7 +77,7 @@ def is_tokens_limit(user_id, chat_id, tokens, bot):
               chat_id,
               f'Вы израсходовали все токены в этой сессии. Вы можете начать новую, введя help_with')
 
-    elif tokens + 50 >= MAX_MODEL_TOKENS:# Если осталось меньше 50 токенов
+    elif tokens + 20 >= MAX_MODEL_TOKENS:# Если осталось меньше 20 токенов
         bot.send_message(
             chat_id,
             f'Вы приближаетесь к лимиту в {MAX_MODEL_TOKENS} токенов в этой сессии. '

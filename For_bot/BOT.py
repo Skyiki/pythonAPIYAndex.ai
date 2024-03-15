@@ -18,6 +18,7 @@ import GPT
 import sqlite3
 
 
+user_answer = ""
 user = {}
 session = {}
 max_tokens_in_task = 2048
@@ -170,9 +171,11 @@ def addition_function(message):
 
 #Команда, присылающая ответ от нейросети
 @bot.message_handler(commands=['begin'])
-def answer_function(call):
+def answer_function(call, user_answer=None):
     user_id = call.message_id
-    user_answer = GPT.create_prompt(user, user_id)
+
+    prompt = GPT.create_prompt(user, user_id)
+    user_answer += prompt
 
     tokens: int = GPT.count_tokens(user_answer)
 
@@ -221,12 +224,12 @@ def answer_function(call):
         if call.data != 'button2':
             GPT.ask_gpt(text=user_answer, role=role, mode='end')
             #удаление ненужного
-            task[user_id] = ''
+            user_answer = ''
 
             #возвращение к началу
             bot.register_next_step_handler(call, subject)
         else:
-            task[user_id] += f'{results}'
+            user_answer += f'{results}'
 
             return
     except:
