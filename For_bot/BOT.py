@@ -4,7 +4,8 @@ from database import(
     create_table,
     insert_data,
     add_record_to_table,
-    execute_selection_query
+    execute_selection_query,
+    is_limit_users
 )
 import requests
 import telebot
@@ -53,6 +54,12 @@ def start_function(message):
     create_db()
     create_table('users')
 
+    limit = is_limit_users()
+
+    if limit == True:
+        bot.send_message(message.chat.id, text='Бот в данный момент не доступен')
+        return
+
     #имя пользователя сохраняется в переменных
     user_name = message.from_user.first_name
 
@@ -66,6 +73,9 @@ def start_function(message):
 
     user_id = message.from_user.id
     insert_data(user_id=user_id)
+
+    global user
+    user[user_id] = {}
 
     #переход к следующей функции
     bot.register_next_step_handler_by_chat_id(message, subject)
@@ -92,8 +102,8 @@ def level(message):
     user_id = message.from_user.id
     text = message.text
 
-    global task
-    task[user_id] = (f"Генерируй сценарий по жанру: {text}")
+    global user
+    user[user_id]['genre'] = f"{text}"
 
     keyboard = types.ReplyKeyboardMarkup()
     button_1 = types.KeyboardButton(text='Гермиона♀️')
@@ -111,10 +121,10 @@ def level(message):
 @bot.message_handler()
 def solve_task(message):
     user_id = message.from_user.id
-
     text = message.text
-    global task
-    task[user_id] += f"Главным героем, генерируемого сценария является: {text}"
+
+    global user
+    user[user_id]['character'] = f"{text}"
 
     #создание клавиатуры
     keyboard = types.ReplyKeyboardMarkup()
@@ -133,8 +143,8 @@ def finals(message):
     user_id = message.from_user.id
 
     text = message.text
-    global task
-    task[user_id] += f"Всё это происходит с сеттингом: {text}"
+    global user
+    user[user_id]['setting'] += f"{text}"
 
     keyboard = types.ReplyKeyboardMarkup()
     button_1 = types.KeyboardButton(text='Начать!')
@@ -152,7 +162,9 @@ def finals(message):
 def addition_function(message):
     user_id = message.from_user.id
     text = message.text
-    task[user_id] += text
+
+    global user
+    task[user_id]['additional_info'] = text
 
     bot.send_message(user_id, text='Спасибо! Мы учтём это при генерации текста. А теперь нажми /begin и я начну писать')
 
@@ -160,7 +172,7 @@ def addition_function(message):
 @bot.message_handler(commands=['begin'])
 def answer_function(call):
     user_id = call.message_id
-    user_answer = task[user_id]
+    user_answer = GPT.create_prompt(user, user_id)
 
     tokens: int = GPT.count_tokens(user_answer)
 
@@ -180,7 +192,8 @@ def answer_function(call):
 
     bot.send_message(user_id, 'Генерирую ответ...')
     try:
-        results = GPT.ask_gpt(text=user_answer, role=role)
+
+        results = GPT.ask_gpt(text=user_answer, role=role, mode='continue')
 
         tokens: int = count_tokens(results)
 
@@ -204,6 +217,7 @@ def answer_function(call):
         bot.send_message(call.message.chat.id, text=results, reply_markup=keyboard)
 
         if call.data != 'button2':
+            GPT.ask_gpt(text=user_answer, role=role, mode='end')
             #удаление ненужного
             task[user_id] = ''
 

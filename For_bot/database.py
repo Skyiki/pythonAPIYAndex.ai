@@ -5,6 +5,7 @@ import logging
 DB_DIR = 'db'
 DB_NAME = 'db.sqlite'
 DB_TABLE_USERS_NAME = 'users'
+MAX_USERS = 3
 
     #создание базы данных
 # Функция для подключения к базе данных или создания новой, если её ещё нет
@@ -124,3 +125,16 @@ def add_record_to_table(user_id, role, content, date, tokens, session_id):
     insert_row(DB_TABLE_USERS_NAME,
                [user_id, role, content, date, tokens, session_id],
                columns=['user_id', 'role', 'content', 'date', 'tokens', 'session_id'])
+
+def is_limit_users():
+    connection = sqlite3.connect('sqlite3.db')
+
+    cursor = connection.cursor()
+    result = cursor.execute('SELECT DISTINCT user_id FROM table_name;')
+
+
+    count = 0  # количество пользователей
+    for i in result:  # считаем количество полученных строк
+        count += 1  # одна строка == один пользователь
+    connection.close()
+    return count >= MAX_USERS
